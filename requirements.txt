@@ -4,3 +4,4 @@ keras==3.5.0
 scikit-learn
 wget
 click==8
+tqdm==4.67.1
