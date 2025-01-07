@@ -1,10 +1,14 @@
 import streamlit as st
 import tensorflow as tf
 import os
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from sklearn.metrics import accuracy_score
 import wget
 import zipfile
+import numpy as np
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.metrics import accuracy_score
+from tqdm import tqdm
+
 class_names = ["COVID-19", "Normal", "Pneumonia"]
 
 # @st.cache_data()
@@ -44,7 +48,19 @@ def predict(model_path):
 
     model = tf.keras.models.load_model(model_path)
     print('model loaded')
-    predictions = model.predict(data)
+
+    progress_bar = st.progress(0)
+
+    predictions = []
+    for i, sample in enumerate(data):
+        progress_bar.progress(i/len(data), text='Evaluating...')
+        if i == len(data):
+            break
+        pred = model.predict(sample)
+        predictions.append(pred[0])
+    
+    predictions = np.array(predictions)
+    print(predictions)
     predictions.squeeze().argmax(axis = 1)
     report = accuracy_score(data.classes,predictions.squeeze().argmax(axis = 1))
     print(report)
@@ -55,9 +71,10 @@ if __name__ == '__main__':
     st.markdown("<h1 style='text-align: center; color: white;'>Chest X-Ray Image Classification</h1>", unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("Upload the Keras Model (.keras extension) trained on Chest X-Ray Dataset.....", type= ["keras"])
-    wget.download(st.secrets["link"], 'test_set.zip')
-    with zipfile.ZipFile("test_set.zip","r") as zip_ref:
-        zip_ref.extractall("test_set")
+    if not os.path.exists('test_set.zip'):
+        wget.download(st.secrets["link"], 'test_set.zip')
+        with zipfile.ZipFile("test_set.zip","r") as zip_ref:
+            zip_ref.extractall("test_set")
 
     if uploaded_file is not None:
         with open(os.path.join("tempDir/model/",uploaded_file.name),"wb") as f:
